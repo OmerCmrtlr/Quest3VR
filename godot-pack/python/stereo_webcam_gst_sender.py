@@ -5,7 +5,10 @@ Godot GDScript JPEG decode eder, H264 için MediaCodec plugin gerekir.
 """
 
 import argparse
+import glob
+import re
 import signal
+import subprocess
 import sys
 import time
 
@@ -19,6 +22,92 @@ except Exception as exc:
     sys.exit(1)
 
 
+def _video_index(path: str) -> int:
+    m = re.search(r"/dev/video(\d+)", path)
+    if not m:
+        return 9999
+    return int(m.group(1))
+
+
+def detect_video_devices() -> list[tuple[str, list[str]]]:
+    entries: list[tuple[str, list[str]]] = []
+
+    try:
+        proc = subprocess.run(
+            ["v4l2-ctl", "--list-devices"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        current_name = ""
+        current_paths: list[str] = []
+
+        for raw in proc.stdout.splitlines():
+            line = raw.rstrip("\n")
+            if not line.strip():
+                if current_name and current_paths:
+                    entries.append((current_name, sorted(current_paths, key=_video_index)))
+                current_name = ""
+                current_paths = []
+                continue
+
+            if line[:1].isspace():
+                dev = line.strip()
+                if dev.startswith("/dev/video"):
+                    current_paths.append(dev)
+                continue
+
+            if current_name and current_paths:
+                entries.append((current_name, sorted(current_paths, key=_video_index)))
+            current_name = line.strip().rstrip(":")
+            current_paths = []
+
+        if current_name and current_paths:
+            entries.append((current_name, sorted(current_paths, key=_video_index)))
+    except Exception:
+        # v4l2-ctl yoksa veya hata olursa glob fallback.
+        pass
+
+    if not entries:
+        vids = sorted(glob.glob("/dev/video*"), key=_video_index)
+        if vids:
+            entries = [("auto-detected", vids)]
+
+    return entries
+
+
+def resolve_capture_device(device_arg: str) -> str:
+    if device_arg and device_arg.lower() != "auto":
+        return device_arg
+
+    entries = detect_video_devices()
+    if not entries:
+        raise RuntimeError("Hiç /dev/video* bulunamadı")
+
+    candidates: list[tuple[float, str, str]] = []
+    for name, paths in entries:
+        lname = name.lower()
+        for path in paths:
+            score = 0.0
+            if "usb" in lname:
+                score += 100.0
+            if "webcam" in lname:
+                score += 80.0
+            if "integrated" in lname:
+                score -= 80.0
+            if "mipi" in lname:
+                score -= 40.0
+            if "loopback" in lname:
+                score -= 200.0
+            score -= _video_index(path) * 0.01
+            candidates.append((score, name, path))
+
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    best_score, best_name, best_path = candidates[0]
+    print(f"[Sender] Kamera auto-seçim: {best_path} ({best_name}, skor={best_score:.2f})")
+    return best_path
+
+
 def build_mjpeg_pipeline(device: str, host: str, port: int,
                           width: int, height: int, fps: int, quality: int) -> str:
     return (
@@ -26,7 +115,6 @@ def build_mjpeg_pipeline(device: str, host: str, port: int,
         "videoconvert ! videoscale ! videorate ! "
         f"video/x-raw,width={width},height={height},framerate={fps}/1,format=I420 ! "
         f"jpegenc quality={quality} ! "
-        "rtpjpegpay pt=26 mtu=60000 ! "
         f"udpsink host={host} port={port} sync=false async=false"
     )
 
@@ -38,7 +126,6 @@ def build_test_mjpeg_pipeline(host: str, port: int,
         "videoconvert ! videorate ! videoscale ! "
         f"video/x-raw,width={width},height={height},framerate={fps}/1,format=I420 ! "
         "jpegenc quality=75 ! "
-        "rtpjpegpay pt=26 mtu=60000 ! "
         f"udpsink host={host} port={port} sync=false async=false"
     )
 
@@ -184,7 +271,7 @@ def main() -> int:
     )
     parser.add_argument("--host", required=False, default="")
     parser.add_argument("--port", type=int, default=5010)
-    parser.add_argument("--device", default="/dev/video0")
+    parser.add_argument("--device", default="auto", help="Kamera device yolu veya auto")
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--fps", type=int, default=15)
@@ -196,12 +283,26 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.list_devices:
-        import glob
-        print("Video cihazları:", sorted(glob.glob("/dev/video*")))
+        devices = detect_video_devices()
+        if not devices:
+            print("Video cihazı bulunamadı.")
+            return 1
+        print("Video cihazları:")
+        for name, paths in devices:
+            print(f"- {name}")
+            for p in paths:
+                print(f"    {p}")
         return 0
 
     if not args.host:
         parser.error("--host gerekli")
+
+    if not args.test:
+        try:
+            args.device = resolve_capture_device(args.device)
+        except Exception as exc:
+            print(f"[Sender] HATA: Kamera seçilemedi: {exc}")
+            return 1
 
     sender = StereoGstSender(args)
     if not sender.start():

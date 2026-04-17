@@ -120,8 +120,8 @@ func _setup_receiver() -> void:
 		_receiver = get_node_or_null(receiver_path)
 
 	if _receiver == null:
-		var recv_script := load("res://addons/external_texture/ExternalTextureReceiver.gd")
-		if recv_script == null or not recv_script.can_instantiate():
+		var recv_script = load("res://addons/external_texture/ExternalTextureReceiver.gd")
+		if recv_script == null:
 			_log("Receiver script yüklenemedi: res://addons/external_texture/ExternalTextureReceiver.gd")
 			return
 		_receiver = recv_script.new()
@@ -144,7 +144,7 @@ func _setup_receiver() -> void:
 		_receiver.fps_updated.connect(_on_fps_updated)
 
 	if _receiver.has_method("is_receiving") and _receiver.has_method("start_receiving") and not _receiver.is_receiving():
-		var started: bool = bool(_receiver.start_receiving())
+		var started: bool = _receiver.start_receiving()
 		if not started:
 			var err: String = _receiver.get_last_error() if _receiver.has_method("get_last_error") else "(hata alınamadı)"
 			_log("Receiver start başarısız: %s" % err)
@@ -200,7 +200,7 @@ func _process(_delta: float) -> void:
 
 	var test_mode := false
 	if _receiver != null:
-		test_mode = bool(_receiver.get("_test_mode"))
+		test_mode = _receiver.get("_test_mode") == true
 	var src := "ANDROID" if not test_mode else "TEST"
 	var node_state := "OK" if _receiver != null else "NULL"
 	var recv_state := "ON" if (_receiver != null and _receiver.has_method("is_receiving") and _receiver.is_receiving()) else "OFF"

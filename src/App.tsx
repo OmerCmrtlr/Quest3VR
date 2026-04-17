@@ -47,6 +47,123 @@ function getInitialSignalUrl() {
   return `${proto}://${window.location.hostname}:8787`;
 }
 
+function createSyntheticTestStream(): { stream: MediaStream; stop: () => void } {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1280;
+  canvas.height = 720;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("2D canvas context unavailable");
+  }
+
+  const start = performance.now();
+  let rafId = 0;
+
+  const draw = () => {
+    const t = (performance.now() - start) / 1000;
+
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, "#0f172a");
+    grad.addColorStop(0.5, "#0b1020");
+    grad.addColorStop(1, "#1e293b");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.6)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.stroke();
+
+    const pulseX = canvas.width / 2 + Math.sin(t * 1.5) * 220;
+    const pulseY = canvas.height / 2 + Math.cos(t * 1.2) * 120;
+    ctx.fillStyle = "rgba(34, 211, 238, 0.35)";
+    ctx.beginPath();
+    ctx.arc(pulseX, pulseY, 90 + Math.sin(t * 2.5) * 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#22d3ee";
+    ctx.font = "700 42px sans-serif";
+    ctx.fillText("QUEST3 WEB TEST PATTERN", 44, 82);
+
+    ctx.fillStyle = "#cbd5e1";
+    ctx.font = "500 28px monospace";
+    ctx.fillText(`time=${t.toFixed(2)}s`, 48, 132);
+    ctx.fillText(`resolution=${canvas.width}x${canvas.height} @30fps`, 48, 172);
+
+    ctx.fillStyle = "rgba(15, 23, 42, 0.7)";
+    ctx.fillRect(42, canvas.height - 110, 610, 68);
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.5)";
+    ctx.strokeRect(42, canvas.height - 110, 610, 68);
+    ctx.fillStyle = "#67e8f9";
+    ctx.font = "500 24px monospace";
+    ctx.fillText("Fallback stream active (camera unavailable)", 58, canvas.height - 66);
+
+    rafId = window.requestAnimationFrame(draw);
+  };
+
+  draw();
+
+  const stream = canvas.captureStream(30);
+  const stop = () => {
+    if (rafId) {
+      window.cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+    stream.getTracks().forEach((track) => track.stop());
+  };
+
+  return { stream, stop };
+}
+
+function describeGetUserMediaError(err: unknown): { name: string; message: string; help: string } {
+  const domErr = err instanceof DOMException ? err : null;
+  const name = domErr?.name ?? "UnknownError";
+  const message = domErr?.message?.trim() || "Detay yok";
+
+  if (name === "NotAllowedError") {
+    return {
+      name,
+      message,
+      help:
+        "Kamera izni reddedildi. Tarayıcı kamera iznini Allow yap. VS Code iç önizlemede izin kapalıysa linki Chrome/Edge'de aç.",
+    };
+  }
+
+  if (name === "NotReadableError") {
+    return {
+      name,
+      message,
+      help:
+        "Kamera başka uygulama tarafından kullanılıyor olabilir. Zoom/Meet/OBS/GStreamer süreçlerini kapatıp tekrar dene.",
+    };
+  }
+
+  if (name === "NotFoundError") {
+    return {
+      name,
+      message,
+      help: "Kamera cihazı bulunamadı. USB kamera bağlantısını kontrol et.",
+    };
+  }
+
+  if (name === "OverconstrainedError") {
+    return {
+      name,
+      message,
+      help: "İstenen çözünürlük/FPS desteklenmiyor. Daha düşük çözünürlük ile yeniden denenecek.",
+    };
+  }
+
+  return {
+    name,
+    message,
+    help: "Beklenmeyen kamera hatası. Tarayıcıyı yenileyip tekrar dene.",
+  };
+}
+
 // Sistem Durum Paneli
 function SystemStatusPanel({
   status,
@@ -156,7 +273,7 @@ function SystemStatusPanel({
           <div>
             <p className="text-[10px] text-slate-500 mb-1">3. Gerçek kamera stream:</p>
             <code className="block text-[10px] text-green-300 bg-slate-900 px-2 py-1 rounded font-mono break-all">
-              {`python3 /home/bnfnc/Projects/Quest3/godot-pack/python/stereo_webcam_gst_sender.py --host ${tabletIp} --port ${udpPort} --device /dev/video0`}
+              {`python3 /home/bnfnc/Projects/Quest3/godot-pack/python/stereo_webcam_gst_sender.py --host ${tabletIp} --port ${udpPort} --device auto`}
             </code>
           </div>
           <div>
@@ -291,6 +408,7 @@ export default function App() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const syntheticStopRef = useRef<(() => void) | null>(null);
   const viewerPeerRef = useRef<RTCPeerConnection | null>(null);
   const viewerHostIdRef = useRef("");
   const hostPeersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -380,27 +498,96 @@ export default function App() {
 
   const startCamera = useCallback(async () => {
     if (localStreamRef.current) return;
+    syntheticStopRef.current?.();
+    syntheticStopRef.current = null;
     setErrorText("");
     setStatusText("Webcam açılıyor...");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+
+    const attempts: MediaStreamConstraints[] = [
+      {
         audio: false,
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } },
-      });
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30, max: 30 },
+        },
+      },
+      { audio: false, video: true },
+    ];
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameraIds = devices
+        .filter((d) => d.kind === "videoinput" && d.deviceId)
+        .map((d) => d.deviceId);
+      for (const cameraId of cameraIds) {
+        attempts.push({ audio: false, video: { deviceId: { exact: cameraId } } });
+      }
+    } catch {
+      // enumerateDevices bazı tarayıcılarda izin olmadan başarısız olabilir; devam.
+    }
+
+    let stream: MediaStream | null = null;
+    let lastError: unknown = null;
+
+    for (const constraints of attempts) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        break;
+      } catch (err) {
+        lastError = err;
+        if (err instanceof DOMException && err.name === "NotAllowedError") {
+          break;
+        }
+      }
+    }
+
+    if (stream) {
       setLocalStream(stream);
       localStreamRef.current = stream;
       setStatusText("Webcam aktif.");
+      setErrorText("");
       setSysStatus((s) => ({ ...s, webStream: "active" }));
       const waiting = Array.from(pendingViewersRef.current);
       pendingViewersRef.current.clear();
       for (const id of waiting) await createHostPeer(id);
+      return;
+    }
+
+    const detail = describeGetUserMediaError(lastError);
+    if (detail.name === "NotAllowedError") {
+      setStatusText("Kamera izni gerekli.");
+      setErrorText(`${detail.help} (${detail.name}: ${detail.message})`);
+      setSysStatus((s) => ({ ...s, webStream: "error" }));
+      return;
+    }
+
+    try {
+      try {
+        const { stream, stop } = createSyntheticTestStream();
+        syntheticStopRef.current = stop;
+        setLocalStream(stream);
+        localStreamRef.current = stream;
+        setStatusText("Kamera açılamadı: test pattern stream aktif.");
+        setErrorText(`${detail.help} (${detail.name}: ${detail.message}) | Test pattern ile devam ediliyor.`);
+        setSysStatus((s) => ({ ...s, webStream: "active" }));
+
+        const waiting = Array.from(pendingViewersRef.current);
+        pendingViewersRef.current.clear();
+        for (const id of waiting) await createHostPeer(id);
+      } catch {
+        setErrorText(`${detail.help} (${detail.name}: ${detail.message})`);
+        setSysStatus((s) => ({ ...s, webStream: "error" }));
+      }
     } catch {
-      setErrorText("Webcam açılamadı. localhost'tan aç ve kamera iznini ver.");
+      setErrorText(`${detail.help} (${detail.name}: ${detail.message})`);
       setSysStatus((s) => ({ ...s, webStream: "error" }));
     }
   }, [createHostPeer]);
 
   const stopCamera = useCallback(() => {
+    syntheticStopRef.current?.();
+    syntheticStopRef.current = null;
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     setLocalStream(null);
@@ -480,6 +667,8 @@ export default function App() {
 
   useEffect(() => () => {
     closeAllHostPeers(); closeViewerPeer();
+    syntheticStopRef.current?.();
+    syntheticStopRef.current = null;
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
   }, [closeAllHostPeers, closeViewerPeer]);
 

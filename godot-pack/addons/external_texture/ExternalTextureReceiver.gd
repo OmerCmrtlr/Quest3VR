@@ -20,6 +20,7 @@ var _is_receiving := false
 var _frame_count := 0
 var _fps_timer := 0.0
 var _fps_display := 0.0
+var _logged_first_frame := false
 
 # RTP reassembly
 var _rtp_frags: Dictionary = {}
@@ -91,6 +92,7 @@ func start_receiving() -> bool:
 	if _is_receiving:
 		return true
 	_last_error = ""
+	_logged_first_frame = false
 
 	_udp = PacketPeerUDP.new()
 	var err = _udp.bind(port, "0.0.0.0")
@@ -152,6 +154,11 @@ func _process(delta: float) -> void:
 func _process_packet(data: PackedByteArray) -> void:
 	var size = data.size()
 
+	# Ham JPEG datagram (SOI ile başlıyorsa doğrudan decode)
+	if size >= 4 and data[0] == 0xFF and data[1] == 0xD8:
+		_decode_jpeg(data)
+		return
+
 	# RTP header minimum 12 byte
 	if size < 13:
 		return
@@ -202,6 +209,14 @@ func _handle_rtp_jpeg(data: PackedByteArray, offset: int, size: int, marker: boo
 	var payload_offset = offset + 8
 	var parsed_luma_qt := PackedByteArray()
 	var parsed_chroma_qt := PackedByteArray()
+	var restart_interval := 0
+
+	# Restart header (RFC2435: type >= 64)
+	if jpeg_type >= 64:
+		if payload_offset + 4 > size:
+			return
+		restart_interval = (data[payload_offset] << 8) | data[payload_offset + 1]
+		payload_offset += 4
 
 	# Quantization tables (quality >= 128)
 	if quality >= 128:
@@ -234,6 +249,7 @@ func _handle_rtp_jpeg(data: PackedByteArray, offset: int, size: int, marker: boo
 			"jpeg_type": jpeg_type,
 			"img_w": img_w,
 			"img_h": img_h,
+			"restart_interval": restart_interval,
 			"luma_qt": PackedByteArray(),
 			"chroma_qt": PackedByteArray()
 		}
@@ -250,6 +266,8 @@ func _handle_rtp_jpeg(data: PackedByteArray, offset: int, size: int, marker: boo
 		state["img_w"] = img_w
 	if img_h > 0:
 		state["img_h"] = img_h
+	if restart_interval > 0:
+		state["restart_interval"] = restart_interval
 	if parsed_luma_qt.size() >= 64:
 		state["luma_qt"] = parsed_luma_qt
 		state["chroma_qt"] = parsed_chroma_qt if parsed_chroma_qt.size() >= 64 else parsed_luma_qt
@@ -284,6 +302,7 @@ func _handle_rtp_jpeg(data: PackedByteArray, offset: int, size: int, marker: boo
 			var state_jpeg_type = int(state.get("jpeg_type", jpeg_type))
 			var state_w = int(state.get("img_w", img_w))
 			var state_h = int(state.get("img_h", img_h))
+			var state_restart_interval = int(state.get("restart_interval", restart_interval))
 			var luma_qt: PackedByteArray = state.get("luma_qt", PackedByteArray())
 			var chroma_qt: PackedByteArray = state.get("chroma_qt", PackedByteArray())
 
@@ -292,6 +311,7 @@ func _handle_rtp_jpeg(data: PackedByteArray, offset: int, size: int, marker: boo
 				state_h if state_h > 0 else height,
 				quality_factor,
 				state_jpeg_type,
+				state_restart_interval,
 				luma_qt,
 				chroma_qt
 			)
@@ -384,7 +404,7 @@ func _decode_jpeg(jpeg_data: PackedByteArray) -> void:
 		return
 
 	if img.get_width() != width or img.get_height() != height:
-		img.resize(width, height, Image.INTERPOLATION_BILINEAR)
+		img.resize(width, height, Image.INTERPOLATE_BILINEAR)
 
 	if img.get_format() != Image.FORMAT_RGB8:
 		img.convert(Image.FORMAT_RGB8)
@@ -397,12 +417,16 @@ func _decode_jpeg(jpeg_data: PackedByteArray) -> void:
 		_godot_texture.update(_image)
 
 	_frame_count += 1
+	if not _logged_first_frame:
+		_logged_first_frame = true
+		_log("İlk frame decode edildi")
 
 func _build_jpeg_header(
 	w: int,
 	h: int,
 	quality: int,
 	jpeg_type: int,
+	restart_interval: int,
 	luma_qt: PackedByteArray = PackedByteArray(),
 	chroma_qt: PackedByteArray = PackedByteArray()
 ) -> PackedByteArray:
@@ -436,6 +460,12 @@ func _build_jpeg_header(
 	_append_dht(hdr, 1, 0, _DHT_AC_LUMA_BITS, _DHT_AC_LUMA_VALS)
 	_append_dht(hdr, 0, 1, _DHT_DC_CHROMA_BITS, _DHT_DC_CHROMA_VALS)
 	_append_dht(hdr, 1, 1, _DHT_AC_CHROMA_BITS, _DHT_AC_CHROMA_VALS)
+
+	# Define Restart Interval (DRI)
+	if restart_interval > 0:
+		_append_marker(hdr, 0xDD)
+		_append_u16(hdr, 4)
+		_append_u16(hdr, restart_interval)
 
 	# Start of Scan
 	_append_sos(hdr)
