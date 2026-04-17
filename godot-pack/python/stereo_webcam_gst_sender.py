@@ -24,7 +24,7 @@ def build_mjpeg_pipeline(device: str, host: str, port: int,
     return (
         f"v4l2src device={device} do-timestamp=true ! "
         "videoconvert ! videoscale ! videorate ! "
-        f"video/x-raw,width={width},height={height},framerate={fps}/1 ! "
+        f"video/x-raw,width={width},height={height},framerate={fps}/1,format=I420 ! "
         f"jpegenc quality={quality} ! "
         "rtpjpegpay pt=26 mtu=60000 ! "
         f"udpsink host={host} port={port} sync=false async=false"
@@ -36,7 +36,7 @@ def build_test_mjpeg_pipeline(host: str, port: int,
     return (
         f"videotestsrc pattern=smpte is-live=true ! "
         "videoconvert ! videorate ! videoscale ! "
-        f"video/x-raw,width={width},height={height},framerate={fps}/1 ! "
+        f"video/x-raw,width={width},height={height},framerate={fps}/1,format=I420 ! "
         "jpegenc quality=75 ! "
         "rtpjpegpay pt=26 mtu=60000 ! "
         f"udpsink host={host} port={port} sync=false async=false"
