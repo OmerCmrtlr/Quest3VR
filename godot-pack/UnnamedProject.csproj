@@ -1,0 +1,13 @@
+<Project Sdk="Godot.NET.Sdk/4.6.0">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Generated export/build assets can mirror project .cs files; exclude them to prevent duplicate symbol errors. -->
+    <Compile Remove="android/build/**/*.cs" />
+    <Compile Remove=".godot/mono/temp/**/*.cs" />
+  </ItemGroup>
+</Project>

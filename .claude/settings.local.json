@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:192.168.2.207)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:5173/?mode=host\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://192.168.2.207:5173/?mode=viewer&session=QUEST3\")",
+      "Bash(curl -s \"http://localhost:5173/?mode=host\")",
+      "Read(//home/bnfnc/Projects/Quest3/**)",
+      "Read(//dev/**)",
+      "Bash(dotnet --version)",
+      "Bash(dotnet workload *)"
+    ]
+  }
+}

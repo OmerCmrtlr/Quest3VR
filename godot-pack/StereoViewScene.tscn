@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Stereo3DViewer.cs" id="1_stereo"]
+[ext_resource type="Script" path="res://addons/gstreamer/ReceiverDisplay.gd" id="2_recv"]
+
+[node name="StereoViewScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_stereo")
+StartOnReady = true
+SameCameraStereoMode = true
+EnablePseudoStereoShift = true
+PseudoStereoShiftPixels = 18.0
+PseudoStereoZoom = 1.03
+UseNetworkStreamSource = false
+NetworkFeedRectPath = NodePath("NetworkFeedSource")
+NetworkReceiverNodePath = NodePath("GStreamerReceiver")
+AutoControlNetworkReceiver = true
+NetworkNoTextureWarnFrames = 60
+AutoFallbackToLocalCameraIfNetworkMissing = true
+ShowDebugInfo = true
+
+[node name="GStreamerReceiver" type="GStreamerReceiver" parent="."]
+port = 5010
+auto_start = false
+
+[node name="NetworkFeedSource" type="TextureRect" parent="."]
+visible = false
+script = ExtResource("2_recv")
+receiver_path = NodePath("../GStreamerReceiver")

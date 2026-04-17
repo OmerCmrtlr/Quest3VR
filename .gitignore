@@ -1,0 +1,48 @@
+# Node / web
+node_modules/
+dist/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+.vscode/*.log
+
+# Godot generated
+.godot/
+.import/
+*.import
+
+# Android / Gradle generated (inside Godot export tree)
+godot-pack/android/build/.gradle/
+godot-pack/android/build/build/
+godot-pack/android/build/tmp/
+godot-pack/android/build/intermediates/
+godot-pack/android/build/outputs/
+godot-pack/android/build/generated/
+godot-pack/android/build/reports/
+godot-pack/android/build/src/
+godot-pack/android/build/.aar_tmp/
+godot-pack/android/build/libs/
+godot-pack/android/build/.scan_godot_aar/
+godot-pack/android/build/src/main/assets/
+godot-pack/android/build/last_*.log
+godot-pack/android/build/last_*.png
+
+# Local build artifacts / packages
+godot-pack/builds/
+godot-pack/android_debug.apk
+*.pck
+*.aar
+*.apk
+
+# Mono generated
+godot-pack/.mono/
+godot-pack/.dotnet/
+godot-pack/obj/
+godot-pack/bin/

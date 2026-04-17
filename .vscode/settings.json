@@ -1,0 +1,40 @@
+{
+  "java.project.referencedLibraries": [
+    "/home/bnfnc/Android/Sdk/platforms/android-34/android.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/f29ca60dbd5fde848a4717447ab8559c/transformed/jetified-godot-lib.template_debug-api.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/2c3b1d79732838a6352e1b700632181b/transformed/jetified-godot-lib.template_debug-runtime.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/7b1de1d4df0103e338a3b006d1936173/transformed/jetified-godot-lib.template_debug/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/1ebb851399f5c013ec896fcef4de5fc7/transformed/jetified-activity-1.8.1/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/1f78652368fcaf22ddb356e4bfe9a15a/transformed/core-1.8.0/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/e3f2e5f90e156afd5520765218a09fe3/transformed/jetified-core-splashscreen-1.0.1/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/4991a84d7cbb23ec2d9bfd42e4bde6a1/transformed/fragment-1.8.6-api.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/900bb50c4943a4f91714b89d71dd5280/transformed/fragment-1.8.6-runtime.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/2ca99e4146903e8afd5117271cb82845/transformed/lifecycle-runtime-2.6.1/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-common/2.6.1/10f354fdb64868baecd67128560c5a0d6312c495/lifecycle-common-2.6.1.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/d8cd17cb6bcac8d9d864fd1ce3474723/transformed/lifecycle-viewmodel-2.6.1/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/bdefa826284a6f2c2e6c051dfa9c6f7c/transformed/jetified-lifecycle-viewmodel-savedstate-2.6.1/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/dd7b3c139405b27a679bcf115fbdc120/transformed/lifecycle-livedata-core-2.6.1/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/6046727a67aaca5e950dc88f11792d22/transformed/jetified-savedstate-1.2.1/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/modules-2/files-2.1/androidx.annotation/annotation/1.2.0/57136ff68ee784c6e19db34ed4a175338fadfde1/annotation-1.2.0.jar",
+    "/home/bnfnc/.gradle/caches/modules-2/files-2.1/androidx.collection/collection/1.1.0/1f27220b47669781457de0d600849a5de0e89909/collection-1.1.0.jar",
+    "/home/bnfnc/.gradle/caches/modules-2/files-2.1/androidx.arch.core/core-common/2.2.0/5e1b8b81dfd5f52c56a8d53b18ca759c19a301f3/core-common-2.2.0.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/6e26691ce8316514549078b9ec187584/transformed/loader-1.0.0/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/8.11.1/transforms/242911742e959f8f1262694b1548bf9e/transformed/viewpager-1.0.0/jars/classes.jar",
+    "/home/bnfnc/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/2.1.20/aa8ca79cd50578314f6d1180c47cbe14c0fee567/kotlin-stdlib-2.1.20.jar",
+    "/home/bnfnc/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk8/1.8.0/ed04f49e186a116753ad70d34f0ac2925d1d8020/kotlin-stdlib-jdk8-1.8.0.jar",
+    "/home/bnfnc/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk7/1.8.0/3c91271347f678c239607abb676d4032a7898427/kotlin-stdlib-jdk7-1.8.0.jar"
+  ],
+  "java.project.sourcePaths": [
+    "android/java"
+  ],
+  "java.errors.incompleteClasspath.severity": "ignore",
+  "java.import.exclusions": [
+    "**/godot-pack/android/build/src/main/java/com/godot/game/**"
+  ],
+  "files.associations": {
+    "GodotApp.java": "plaintext",
+    "**/godot-pack/android/build/src/main/java/com/godot/game/*.java": "plaintext",
+    "**/godot-pack/android/plugins/ExternalTexture/*.java": "plaintext"
+  },
+  "godotTools.editorPath.godot3": "/home/bnfnc/Projects/Quest3/godot-pack/project.godot"
+}

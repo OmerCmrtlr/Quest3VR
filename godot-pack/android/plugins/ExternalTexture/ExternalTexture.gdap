@@ -1,0 +1,10 @@
+[config]
+name="ExternalTexture"
+binary_type="local"
+binary="ExternalTexturePlugin.java"
+
+[dependencies]
+
+[android]
+package="com.godot.game"
+class="ExternalTexturePlugin"

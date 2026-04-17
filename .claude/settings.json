@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run*)",
+      "Bash(node *)",
+      "Bash(adb *)",
+      "Bash(adb install*)",
+      "Bash(adb logcat*)",
+      "Bash(adb shell*)",
+      "Bash(adb devices*)",
+      "Bash(python3 *)",
+      "Bash(gst-launch-1.0 *)",
+      "Bash(gst-inspect-1.0 *)",
+      "Bash(ping -c*)",
+      "Bash(ls *)",
+      "Bash(find . *)",
+      "Bash(cat *)",
+      "Bash(grep *)",
+      "Bash(echo *)",
+      "Bash(mkdir -p *)",
+      "Bash(touch *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(godot *)",
+      "Bash(tcpdump *)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(sudo rm*)",
+      "Bash(sudo apt remove*)"
+    ]
+  }
+}
